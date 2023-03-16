@@ -1,0 +1,3 @@
+[submodule "deps/concordium-base"]
+	path = deps/concordium-base
+	url = git@github.com:Concordium/concordium-base.git
