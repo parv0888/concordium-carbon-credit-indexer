@@ -1,14 +1,6 @@
 {
     "private": true,
     "workspaces": ["server", "server-rust-bindings"],
-    "husky": {
-        "hooks": {
-            "pre-commit": "lint-staged"
-        }
-    },
-    "lint-staged": {
-        "*.ts": "yarn lint-fix"
-    },
     "packageManager": "yarn@berry",
     "prettier": {
         "singleQuote": true,
