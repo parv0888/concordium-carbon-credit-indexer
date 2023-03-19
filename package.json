@@ -1,6 +1,11 @@
 {
     "private": true,
-    "workspaces": ["server", "server-rust-bindings"],
+    "workspaces": {
+        "packages": [
+            "server",
+            "server-rust-bindings"
+        ]
+    },
     "packageManager": "yarn@berry",
     "prettier": {
         "singleQuote": true,
@@ -31,10 +36,10 @@
         "webpack-cli": "^4.9.2"
     },
     "scripts": {
-        "test": "FORCE_COLOR=true yarn workspaces foreach --no-private run test --passWithNoTests",
-        "lint": "FORCE_COLOR=true yarn workspaces foreach --no-private run lint",
+        "test": "FORCE_COLOR=true yarn workspaces run test --passWithNoTests",
+        "lint": "FORCE_COLOR=true yarn workspaces run lint",
         "lint-fix": "eslint --cache . --fix",
-        "build": "FORCE_COLOR=true yarn workspaces foreach -v -t --no-private run build",
-        "build:dev": "FORCE_COLOR=true yarn workspaces foreach -v -t --no-private run build-dev"
+        "build": "FORCE_COLOR=true yarn workspaces run build",
+        "build:dev": "FORCE_COLOR=true yarn workspaces run build-dev"
     }
 }
