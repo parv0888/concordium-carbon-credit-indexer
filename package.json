@@ -36,10 +36,6 @@
         "webpack-cli": "^4.9.2"
     },
     "scripts": {
-        "test": "FORCE_COLOR=true yarn workspaces run test --passWithNoTests",
-        "lint": "FORCE_COLOR=true yarn workspaces run lint",
-        "lint-fix": "eslint --cache . --fix",
-        "build": "FORCE_COLOR=true yarn workspaces run build",
-        "build:dev": "FORCE_COLOR=true yarn workspaces run build-dev"
+        "build": "FORCE_COLOR=true yarn workspaces run build"
     }
 }

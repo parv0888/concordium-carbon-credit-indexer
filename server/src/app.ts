@@ -63,7 +63,40 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
                         },
                     ])
                     .exec();
-                res.json(dbRes[0].amount);
+                res.json(dbRes.length ? dbRes[0].amount : 0);
+            } catch (err) {
+                console.error(err);
+                res.json(err).status(503);
+            }
+        }
+    );
+
+    app.get(
+        '/market/index/:index/subindex/:subindex/tokens',
+        async (req: Request, res: Response) => {
+            try {
+                const resDocs = await db.contractEvents.aggregate([
+                    {
+                        $match: {
+                            address: {
+                                index: req.params.index,
+                                subindex: req.params.subindex,
+                            },
+                        },
+                    },
+                    {
+                        $sort: { 'block.blockHeight': 1 },
+                    },
+                    {
+                        $group: {
+                            _id: '$event.QuantityUpdated.owner',
+                            doc: { $last: '$$ROOT' },
+                        },
+                    },
+                    { $replaceRoot: { newRoot: '$doc' } },
+                ]);
+
+                res.json(resDocs.map((r) => r.event.QuantityUpdated[0]));
             } catch (err) {
                 console.error(err);
                 res.json(err).status(503);
