@@ -12,3 +12,7 @@ export const toDbContractAddress = (
 
 export const toContractNameFromReceiveName = (name: string): string =>
     name.split('.')[0];
+
+export const max = (val1: bigint, val2: bigint): bigint => {
+    return val1 > val2 ? val1 : val2;
+};
