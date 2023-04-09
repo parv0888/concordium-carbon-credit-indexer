@@ -1,5 +1,6 @@
 import express, { Application, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
+import { default as cors } from 'cors';
 import getDb, { getHighestBlockHeight } from './db/db';
 dotenv.config();
 
@@ -9,7 +10,7 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
 (async () => {
     const db = await getDb(mongodbConnString);
     const app: Application = express();
-
+    app.use(cors());
     app.get('/system/block-height', async (req: Request, res: Response) => {
         const blockHeight = await getHighestBlockHeight(db);
         res.json(blockHeight.toString());
