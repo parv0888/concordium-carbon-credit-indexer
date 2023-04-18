@@ -2,6 +2,7 @@ import express, { Application, Request, Response } from 'express';
 import * as dotenv from 'dotenv';
 import { default as cors } from 'cors';
 import getDb, { getHighestBlockHeight } from './db/db';
+import moment from 'moment';
 dotenv.config();
 
 const port = process.env.APP_PORT || '';
@@ -11,6 +12,7 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
     const db = await getDb(mongodbConnString);
     const app: Application = express();
     app.use(cors());
+
     app.get('/system/block-height', async (req: Request, res: Response) => {
         const blockHeight = await getHighestBlockHeight(db);
         res.json(blockHeight.toString());
@@ -19,7 +21,6 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
     app.get(
         '/market/index/:index/subindex/:subindex/tokens',
         async (req: Request, res: Response) => {
-            console.log(req.params);
             try {
                 const resDocs = await db.contractEvents.aggregate([
                     {
@@ -49,6 +50,40 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
             }
         }
     );
+
+    app.get('/auctions/live', async (req: Request, res: Response) => {
+        console.log(moment().unix());
+
+        try {
+            const resDocs = await db.contractEvents.aggregate([
+                {
+                    $match: {
+                        'event.type': 'AuctionUpdated',
+                        'event.auction_state.name': 'NotSoldYet',
+                        'event.start': { $lt: moment().unix() },
+                        'event.end': { $gt: moment().unix() },
+                    },
+                },
+                {
+                    $sort: { 'block.blockHeight': 1 },
+                },
+                {
+                    $group: {
+                        _id: '$address.index',
+                        doc: { $last: '$$ROOT' },
+                    },
+                },
+                { $replaceRoot: { newRoot: '$doc' } },
+            ]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            res.json(
+                resDocs.map((r: any) => ({ ...r.event, address: r.address }))
+            );
+        } catch (err) {
+            console.error(err);
+            res.json(err).status(503);
+        }
+    });
 
     return app;
 })()

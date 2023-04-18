@@ -17,6 +17,7 @@ import {
 import { PluginBlockItem } from './listener/plugin-types';
 import { Cis2MarketPlugin } from './listener/plugins/cis2-market-plugin';
 import { Cis2Plugin } from './listener/plugins/cis2-plugin';
+import { Cis2AuctionPlugin } from './listener/plugins/cis2-auction-plugin';
 dotenv.config();
 
 const nodeEndpoint = process.env.NODE_ENDPOINT || '';
@@ -28,7 +29,11 @@ const plugins: IListenerPlugin[] = [];
 
 (async () => {
     const db = await getDb(mongodbConnString);
-    plugins.push(new Cis2MarketPlugin(db), new Cis2Plugin(db));
+    plugins.push(
+        new Cis2MarketPlugin(db),
+        new Cis2Plugin(db),
+        new Cis2AuctionPlugin(db)
+    );
 
     while (true) {
         const startingBlockHeight = !!startingBlockHash
