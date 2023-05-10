@@ -52,8 +52,6 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
     );
 
     app.get('/auctions/live', async (req: Request, res: Response) => {
-        console.log(moment().unix());
-
         try {
             const resDocs = await db.contractEvents.aggregate([
                 {
@@ -75,9 +73,44 @@ const mongodbConnString = process.env.DB_CONN_STRING || '';
                 },
                 { $replaceRoot: { newRoot: '$doc' } },
             ]);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             res.json(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 resDocs.map((r: any) => ({ ...r.event, address: r.address }))
+            );
+        } catch (err) {
+            console.error(err);
+            res.json(err).status(503);
+        }
+    });
+
+    app.get('/auctions/ended/:account', async (req: Request, res: Response) => {
+        try {
+            const resDocs = await db.contractEvents.aggregate([
+                {
+                    $match: {
+                        'event.type': 'AuctionUpdated',
+                        'event.auction_state.name': 'NotSoldYet',
+                        'event.end': { $lt: moment().unix() },
+                        'event.highest_bidder': req.params.account,
+                    },
+                },
+                {
+                    $sort: { 'block.blockHeight': 1 },
+                },
+                {
+                    $group: {
+                        _id: '$address.index',
+                        doc: { $last: '$$ROOT' },
+                    },
+                },
+                { $replaceRoot: { newRoot: '$doc' } },
+            ]);
+            res.json(
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                resDocs.map((r: any) => ({
+                    ...r.event,
+                    address: r.address,
+                }))
             );
         } catch (err) {
             console.error(err);

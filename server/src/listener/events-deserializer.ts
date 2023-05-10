@@ -43,9 +43,6 @@ const deserializeContractEvent = (
     schema: string,
     contractName: string
 ): unknown => {
-    console.log(
-        `deserializing event contract name:${contractName}, eventHex: ${contractEvent}, schema: ${schema}`
-    );
     const eventJson = deserializeEventValue(
         contractEvent,
         schema,

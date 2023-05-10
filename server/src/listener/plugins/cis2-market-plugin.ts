@@ -51,7 +51,12 @@ export class Cis2MarketPlugin implements IListenerPlugin {
                 .map((e) => new this.db.contractEvents(e))
         );
 
-        await this.db.contractEvents.bulkSave(events);
+        if (events.length) {
+            console.log(
+                `cis2-market-plugin: inserting ${events.length} events`
+            );
+            await this.db.contractEvents.bulkSave(events);
+        }
     }
 
     shouldProcessContract(address: ContractAddress): boolean {
