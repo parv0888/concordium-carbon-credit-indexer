@@ -1,272 +1,212 @@
-import { credentials } from '@grpc/grpc-js/';
+import * as dotenv from 'dotenv';
+import getDb, * as dbClient from './db/db';
+import * as concordiumClient from './concordium/client';
+import { max } from './utils';
+import { IBlock, InitializedContract } from './db/db-types';
+import sleep from 'sleep-promise';
 import {
-    AccountTransactionSummary,
-    BaseAccountTransactionSummary,
-    BlockItemSummary,
-    createConcordiumClient,
-    InitContractSummary,
     TransactionEventTag,
     TransactionKindString,
     TransactionSummaryType,
-    UpdateContractSummary,
-    ContractAddress,
 } from '@concordium/node-sdk';
-import * as dotenv from 'dotenv';
-import getDb, { IBlock } from './db';
+import { IListenerPlugin } from './listener/listener-plugin';
 import {
-    toContractNameFromInitName,
-    toDbContractAddress,
-    toContractNameFromReceiveName,
-} from './utils';
-import sleep from 'sleep-promise';
-import { DbBlockEvent, DbEvent, DbTransactionEvent } from './cis2-event-types';
-import { deserializeEventValue } from 'server-rust-bindings';
-import {
-    contractModules,
-    shouldProcessAccountTransaction,
-    shouldProcessBlock,
-    shouldProcessContract,
-    shouldProcessInitContractTransaction,
-    toDbEvent,
-} from './listener-config';
+    deserializeInitContractEvents,
+    deserializeUpdateContractEvents,
+} from './listener/events-deserializer';
+import { PluginBlockItem } from './listener/plugin-types';
+import { Cis2MarketPlugin } from './listener/plugins/cis2-market-plugin';
+import { Cis2Plugin } from './listener/plugins/cis2-plugin';
+import { Cis2AuctionPlugin } from './listener/plugins/cis2-auction-plugin';
 dotenv.config();
 
 const nodeEndpoint = process.env.NODE_ENDPOINT || '';
 const nodePort = parseInt(process.env.NODE_PORT || '');
 const mongodbConnString = process.env.DB_CONN_STRING || '';
-const startingBlockHash = process.env.STARTING_BLOCK_HASH || '';
-
-const client = createConcordiumClient(
-    nodeEndpoint,
-    nodePort,
-    credentials.createInsecure(),
-    { timeout: 15000 }
-);
+const startingBlockHash = process.env.STARTING_BLOCK_HASH;
+const client = concordiumClient.getConcordiumClient(nodeEndpoint, nodePort);
+const plugins: IListenerPlugin[] = [];
 
 (async () => {
     const db = await getDb(mongodbConnString);
-
-    const parseTransaction = async (
-        transaction: BlockItemSummary
-    ): Promise<DbTransactionEvent<Record<string, any>>[]> => {
-        switch (transaction.type) {
-            case TransactionSummaryType.AccountTransaction:
-                if (!shouldProcessAccountTransaction(transaction.hash)) {
-                    return [];
-                }
-
-                const events = await parseAccountTransaction(transaction);
-                return events.map((e) => ({
-                    ...e,
-                    transaction: {
-                        hash: transaction.hash,
-                        transactionIndex: transaction.index.toString(),
-                        blockItemType: transaction.type,
-                        transactionType: transaction.transactionType,
-                    },
-                }));
-            default:
-            case TransactionSummaryType.AccountCreation:
-            case TransactionSummaryType.UpdateTransaction:
-                console.debug(
-                    `skipping transaction of type: ${transaction.type}`
-                );
-                return [];
-        }
-    };
-
-    const parseAccountTransaction = async (
-        transaction: AccountTransactionSummary
-    ): Promise<DbEvent<Record<string, any>>[]> => {
-        switch (transaction.transactionType) {
-            case TransactionKindString.InitContract:
-                return parseInitContractAccountTransaction(transaction);
-            case TransactionKindString.Update:
-                return parseUpdateContractAccountTransaction(transaction);
-            default:
-                console.debug(
-                    `skipping account transaction of type: ${transaction.transactionType}`
-                );
-                return [];
-        }
-    };
-
-    const parseInitContractAccountTransaction = async (
-        transaction: BaseAccountTransactionSummary & InitContractSummary
-    ): Promise<DbEvent<Record<string, any>>[]> => {
-        if (!shouldProcessInitContractTransaction(transaction)) {
-            return [];
-        }
-
-        const schema = contractModules[transaction.contractInitialized.ref];
-        if (!schema) {
-            console.error(
-                `no schema present for module:${transaction.contractInitialized.ref}`
-            );
-
-            return [];
-        }
-
-        return transaction.contractInitialized.events
-            .map((contractEvent) =>
-                deserializeEventValue(
-                    contractEvent,
-                    schema.moduleSchema,
-                    toContractNameFromInitName(
-                        transaction.contractInitialized.initName
-                    ),
-                    3
-                )
-            )
-            .map((e) => ({
-                event: toDbEvent(JSON.parse(e)),
-                eventType: TransactionEventTag.ContractInitialized,
-                address: toDbContractAddress(
-                    transaction.contractInitialized.address
-                ),
-            }));
-    };
-
-    const parseUpdateContractAccountTransaction = async (
-        transaction: BaseAccountTransactionSummary & UpdateContractSummary
-    ): Promise<DbEvent<Record<string, any>>[]> => {
-        const updateEvents = transaction.events
-            .map((e) => {
-                switch (e.tag) {
-                    case TransactionEventTag.Updated:
-                        return {
-                            address: e.address,
-                            events: e.events,
-                            tag: e.tag,
-                            receiveName: e.receiveName,
-                        };
-                    default:
-                        return {};
-                }
-            })
-            .filter((e) => !!e.address)
-            .filter((e) => shouldProcessContract(e.address))
-            .map((e) => ({
-                address: e.address as ContractAddress,
-                events: e.events as string[],
-                tag: e.tag as TransactionEventTag,
-                receiveName: e.receiveName as string,
-            }));
-
-        const events = [];
-
-        for (const txnEvent of updateEvents) {
-            const instanceInfo = await client.getInstanceInfo(txnEvent.address);
-            const schema = contractModules[instanceInfo.sourceModule.moduleRef];
-            if (!schema) {
-                console.error(
-                    `no schema present for module:${instanceInfo.sourceModule.moduleRef}`
-                );
-
-                return [];
-            }
-
-            events.push(
-                ...txnEvent.events
-                    .map((contractEvent) =>
-                        deserializeEventValue(
-                            contractEvent,
-                            schema.moduleSchema,
-                            toContractNameFromReceiveName(txnEvent.receiveName),
-                            3
-                        )
-                    )
-                    .filter((e) => e.startsWith('{'))
-                    .map((e) => ({
-                        event: toDbEvent(JSON.parse(e)),
-                        eventType: txnEvent.tag,
-                        address: toDbContractAddress(txnEvent.address),
-                    }))
-            );
-        }
-
-        return events;
-    };
-
-    const parseBlock = async (
-        block: IBlock
-    ): Promise<DbBlockEvent<Record<string, any>>[]> => {
-        const blockTransactionEvents = client.getBlockTransactionEvents(
-            block.blockHash
-        );
-        const events = [];
-
-        for await (const transaction of blockTransactionEvents) {
-            const transactionEVents = await parseTransaction(transaction);
-            events.push(...transactionEVents.map((e) => ({ ...e, block })));
-        }
-
-        return events;
-    };
+    plugins.push(
+        new Cis2MarketPlugin(db),
+        new Cis2Plugin(db),
+        new Cis2AuctionPlugin(db)
+    );
 
     while (true) {
-        console.log('getting consensus info');
-        const consensusStatus = await client.getConsensusStatus();
-
-        let initBlockHash = startingBlockHash;
-        if (!initBlockHash) {
-            initBlockHash = consensusStatus.genesisBlock;
-        }
-
-        const startingBlockInfo = await client.getBlockInfo(startingBlockHash);
-
-        let highestBlockHeight = startingBlockInfo.blockHeight;
-        const highestBlock = await db.blocks
-            .find({})
-            .sort({ blockHeight: 'desc' })
-            .limit(1);
-
-        if (highestBlock.length) {
-            //todo: fix this
-            highestBlockHeight =
-                startingBlockInfo.blockHeight > highestBlock[0].blockHeight
-                    ? startingBlockInfo.blockHeight
-                    : BigInt(highestBlock[0].blockHeight);
-        }
-
-        console.log(`highest block saved: ${highestBlockHeight}`);
-        console.log(
-            `consensus status block: ${consensusStatus.bestBlockHeight}`
+        const startingBlockHeight = !!startingBlockHash
+            ? await concordiumClient.getBlockHeight(client, startingBlockHash)
+            : BigInt(1);
+        const lastFinalizedBlockHeight =
+            await concordiumClient.getMaxBlockHeight(client);
+        const highestSyncedBlockHeight = await dbClient.getHighestBlockHeight(
+            db
         );
+        const highestBlockHeight = max(
+            startingBlockHeight,
+            highestSyncedBlockHeight + BigInt(1)
+        );
+        console.log(`highest block saved: ${highestBlockHeight}`);
+        console.log(`consensus status block: ${lastFinalizedBlockHeight}`);
 
         for (
-            let blockHeight = highestBlockHeight + BigInt(1);
-            blockHeight <= consensusStatus.lastFinalizedBlockHeight;
+            let blockHeight = highestBlockHeight;
+            blockHeight <= lastFinalizedBlockHeight;
             blockHeight++
         ) {
             console.log(`processing block at height: ${blockHeight}`);
-            const blocks = await client.getBlocksAtHeight(BigInt(blockHeight));
-
-            if (blocks.length > 1) {
-                throw new Error(
-                    `got ${blocks.length} blocks at height: ${blockHeight}`
-                );
-            }
+            const blockHash = await concordiumClient.getFinalizedBlockAtHeight(
+                client,
+                blockHeight
+            );
 
             const block: IBlock = {
                 blockHeight: parseInt(blockHeight.toString()),
-                blockHash: blocks[0],
+                blockHash,
             };
 
-            if (shouldProcessBlock(block.blockHash)) {
-                const events = await parseBlock(block);
-                const contractEvents = events.map(
-                    (e) => new db.contractEvents(e)
-                );
-
-                if (contractEvents.length) {
-                    await db.contractEvents.bulkSave(contractEvents);
+            for (const plugin of plugins) {
+                if (!plugin.shouldProcessBlock(blockHash)) {
+                    continue;
                 }
 
-                console.log('saved events', contractEvents);
+                const blockItems = await client.getBlockTransactionEvents(
+                    blockHash
+                );
+
+                const initializedContracts: InitializedContract[] = [];
+
+                const pluginBlockItems: PluginBlockItem[] = [];
+
+                for await (const blockItem of blockItems) {
+                    switch (blockItem.type) {
+                        case TransactionSummaryType.AccountTransaction:
+                            switch (blockItem.transactionType) {
+                                case TransactionKindString.InitContract:
+                                    if (
+                                        !plugin.shouldProcessModule(
+                                            blockItem.contractInitialized.ref
+                                        )
+                                    ) {
+                                        continue;
+                                    }
+                                    initializedContracts.push({
+                                        moduleRef:
+                                            blockItem.contractInitialized.ref,
+                                        contractAddress:
+                                            blockItem.contractInitialized
+                                                .address,
+                                    });
+                                    const moduleSchema = plugin.getModuleSchema(
+                                        blockItem.contractInitialized.ref
+                                    );
+                                    const initContractEvents =
+                                        deserializeInitContractEvents(
+                                            blockItem.contractInitialized
+                                                .events,
+                                            moduleSchema,
+                                            blockItem.contractInitialized
+                                                .initName
+                                        );
+                                    pluginBlockItems.push({
+                                        hash: blockItem.hash,
+                                        contractAddress:
+                                            blockItem.contractInitialized
+                                                .address,
+                                        methodName:
+                                            blockItem.contractInitialized
+                                                .initName,
+                                        type: blockItem.type,
+                                        transactionType:
+                                            blockItem.transactionType,
+                                        events: initContractEvents,
+                                        transactionEventType:
+                                            TransactionEventTag.ContractInitialized,
+                                        transactionIndex: blockItem.index,
+                                    });
+                                    break;
+                                case TransactionKindString.Update:
+                                    for await (const e of blockItem.events) {
+                                        switch (e.tag) {
+                                            case TransactionEventTag.Updated:
+                                                if (
+                                                    !plugin.shouldProcessContract(
+                                                        e.address
+                                                    )
+                                                ) {
+                                                    continue;
+                                                }
+
+                                                const moduleRef =
+                                                    await concordiumClient.getContractModule(
+                                                        client,
+                                                        e.address,
+                                                        blockHash
+                                                    );
+                                                if (
+                                                    !plugin.shouldProcessModule(
+                                                        moduleRef
+                                                    )
+                                                ) {
+                                                    continue;
+                                                }
+
+                                                const moduleSchema =
+                                                    plugin.getModuleSchema(
+                                                        moduleRef
+                                                    );
+
+                                                const updatedEvents =
+                                                    deserializeUpdateContractEvents(
+                                                        e.events,
+                                                        moduleSchema,
+                                                        e.receiveName
+                                                    );
+                                                pluginBlockItems.push({
+                                                    contractAddress: e.address,
+                                                    hash: blockItem.hash,
+                                                    methodName: e.receiveName,
+                                                    type: blockItem.type,
+                                                    transactionType:
+                                                        blockItem.transactionType,
+                                                    events: updatedEvents,
+                                                    transactionEventType: e.tag,
+                                                    transactionIndex:
+                                                        blockItem.index,
+                                                });
+                                                break;
+                                            default:
+                                                continue;
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    continue;
+                            }
+                            break;
+                        default:
+                            continue;
+                    }
+                }
+
+                console.log(
+                    `sending ${
+                        pluginBlockItems.length
+                    } block items to plugin: ${plugin.getName()}`
+                );
+                await plugin.insertBlockItems(
+                    blockHash,
+                    blockHeight,
+                    pluginBlockItems
+                );
             }
 
-            await new db.blocks(block).save();
+            console.log(
+                `processed block: ${block.blockHeight}, hash: ${block.blockHash}`
+            );
+            await dbClient.insertBlock(db, block);
         }
 
         await sleep(5000);

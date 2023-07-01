@@ -1,8 +1,15 @@
 import {
+    ContractAddress,
     TransactionEventTag,
     TransactionKindString,
     TransactionSummaryType,
 } from '@concordium/node-sdk';
+import { Model } from 'mongoose';
+
+export type IBlock = {
+    blockHeight: number;
+    blockHash: string;
+};
 
 export type DbEvent<T> = {
     event: T;
@@ -24,4 +31,16 @@ export type DbBlockEvent<T> = DbTransactionEvent<T> & {
         blockHash: string;
         blockHeight: number;
     };
+};
+
+export type IContractEvent = DbBlockEvent<unknown>;
+
+export type IDb = {
+    blocks: Model<IBlock>;
+    contractEvents: Model<IContractEvent>;
+};
+
+export type InitializedContract = {
+    moduleRef: string;
+    contractAddress: ContractAddress;
 };
