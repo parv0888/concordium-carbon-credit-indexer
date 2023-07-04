@@ -8,7 +8,7 @@
         "/dist/**/*"
     ],
     "dependencies": {
-        "@concordium/node-sdk": "^6.2.0",
+        "@concordium/node-sdk": "^8.0.0",
         "@grpc/grpc-js": "^1.8.12",
         "@types/cors": "^2.8.13",
         "cors": "^2.8.5",

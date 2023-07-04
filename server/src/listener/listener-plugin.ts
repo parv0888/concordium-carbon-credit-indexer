@@ -5,6 +5,7 @@ import { PluginBlockItem } from './plugin-types';
  * Interface for Listener Plugin
  */
 export interface IListenerPlugin {
+    shouldProcessContractMethod(receiveName: string): unknown;
     /**
      * Gets the name of the plugin
      */
@@ -27,7 +28,7 @@ export interface IListenerPlugin {
      * Events of all the contract addresses for which this function returns false will be ignored.
      * @param address Contract Address.
      */
-    shouldProcessContract(address: ContractAddress): boolean;
+    shouldProcessContractAddress(address: ContractAddress): boolean;
 
     /**
      * Get the module schema for the provided module reference.

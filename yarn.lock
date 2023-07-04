@@ -1046,12 +1046,12 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@concordium/common-sdk@6.3.0":
-  version "6.3.0"
-  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-6.3.0.tgz#3664bb907640b08b1a6580111ad6578a6ead408a"
-  integrity sha512-Dc4NfBfN8QmFW+aODOHBcA75y/JbTI8F8cywfdAK0xOuf35pF5Ud1TYaQnpaN3OQfTMmkdpGJlFB+hPD6yhgGA==
+"@concordium/common-sdk@8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@concordium/common-sdk/-/common-sdk-8.0.0.tgz#a93cba726e6f2a26209185af7d1659bcc0f16ce0"
+  integrity sha512-eHB3PaZ02nhVh0sW2R/SjjvViCtW4Ue+BhRja8WGkBq1yfkFO877dM8tzBVNeCWwAMuvx+QzGEluexaNunyMcg==
   dependencies:
-    "@concordium/rust-bindings" "0.10.0"
+    "@concordium/rust-bindings" "1.0.0"
     "@grpc/grpc-js" "^1.3.4"
     "@noble/ed25519" "^1.7.1"
     "@protobuf-ts/runtime-rpc" "^2.8.2"
@@ -1064,21 +1064,21 @@
     json-bigint "^1.0.0"
     uuid "^8.3.2"
 
-"@concordium/node-sdk@^6.2.0":
-  version "6.2.0"
-  resolved "https://registry.yarnpkg.com/@concordium/node-sdk/-/node-sdk-6.2.0.tgz#c82ca70cf1fe4aac04649077a2df990f3da7133c"
-  integrity sha512-drsZx0QdwbTAEiVW4PnaokX+/jqCRCS07dkMeDeWn5dFov5825L/no1aUGW/KEkTMfhp+iFBYpylTa8meS0AQQ==
+"@concordium/node-sdk@^8.0.0":
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/@concordium/node-sdk/-/node-sdk-8.0.0.tgz#419f509a4e539dfb389816ee852b73c5852cc840"
+  integrity sha512-m2otAk0gKvMHB5296eJYL9Un24etgoSBHfsKcdtKNacGCp4CbH7wRuSB9Sl+Hm77yZBturgwaJAj8gCoJfOVNg==
   dependencies:
-    "@concordium/common-sdk" "6.3.0"
+    "@concordium/common-sdk" "8.0.0"
     "@grpc/grpc-js" "^1.3.4"
     "@protobuf-ts/grpc-transport" "^2.8.2"
     buffer "^6.0.3"
     google-protobuf "^3.20.1"
 
-"@concordium/rust-bindings@0.10.0":
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-0.10.0.tgz#4bfdfe862aec1410239d7e2424dce5327165ba0c"
-  integrity sha512-57f6nCbWPlGzt2YU2ksEKtVFPfYNKsNWDci2JYiC4ib9TgpaL2VFkWW6rbmHSuaAzeEDE/mpHJQD6cuq7D39/g==
+"@concordium/rust-bindings@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@concordium/rust-bindings/-/rust-bindings-1.0.0.tgz#c466aaa6be6f50f9693cc049a7810f8479d77734"
+  integrity sha512-wNzgL+a+C28NFhMZODLUjmg6bYkmgUf/vz+Ai17w13cNXekqfYnGAaKBS1rEvLULtw1ASnH3WnHmAOz8Cmv+kA==
 
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"

@@ -12,9 +12,6 @@ export const getDb = async (connString: string): Promise<ICis2MarketDb> => {
     return {
         contractEvents:
             client.models['contractEvents'] ||
-            client.model(
-                'contractEvents',
-                new Schema<IContractEvent>({}, { strict: false })
-            ),
+            client.model('contractEvents', new Schema<IContractEvent>({}, { strict: false })),
     };
 };
