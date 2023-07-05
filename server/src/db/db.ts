@@ -1,10 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import {
-    type IDb,
-    type IBlock,
-    type IContractEvent,
-    InitializedContract,
-} from './db-types';
+import { type IDb, type IBlock, type IContractEvent, InitializedContract, IUser } from './db-types';
 
 export default async function getDb(connString: string): Promise<IDb> {
     const client = await mongoose.connect(connString, {
@@ -26,18 +21,16 @@ export default async function getDb(connString: string): Promise<IDb> {
             ),
         contractEvents:
             client.models['contractEvents'] ||
-            client.model(
-                'contractEvents',
-                new Schema<IContractEvent>({}, { strict: false })
-            ),
+            client.model('contractEvents', new Schema<IContractEvent>({}, { strict: false })),
+        users: client.models['users'] || client.model('users', new Schema<IUser>({
+            email: { type: String, required: true },
+            account: { type: String, required: true },
+        })),
     };
 }
 
 export const getHighestBlockHeight = async (db: IDb): Promise<bigint> => {
-    const highestBlock = await db.blocks
-        .find({})
-        .sort({ blockHeight: 'desc' })
-        .limit(1);
+    const highestBlock = await db.blocks.find({}).sort({ blockHeight: 'desc' }).limit(1);
 
     if (!highestBlock.length) {
         return BigInt(1);

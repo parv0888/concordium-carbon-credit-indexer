@@ -81,6 +81,7 @@ const plugins: IListenerPlugin[] = [];
                                         events: initContractEvents,
                                         transactionEventType: TransactionEventTag.ContractInitialized,
                                         transactionIndex: blockItem.index,
+                                        sender: blockItem.sender
                                     });
                                     break;
                                 case TransactionKindString.Update:
@@ -120,6 +121,7 @@ const plugins: IListenerPlugin[] = [];
                                                     events: updatedEvents,
                                                     transactionEventType: e.tag,
                                                     transactionIndex: blockItem.index,
+                                                    sender: blockItem.sender
                                                 });
                                                 break;
                                             default:

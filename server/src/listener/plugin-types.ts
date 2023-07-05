@@ -15,4 +15,5 @@ export type PluginBlockItem = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     events: any[];
     transactionEventType: TransactionEventTag;
+    sender: string;
 };

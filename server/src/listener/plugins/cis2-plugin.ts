@@ -1,7 +1,6 @@
 import { ContractAddress } from '@concordium/node-sdk';
 import { IListenerPlugin } from '../listener-plugin';
 import { PluginBlockItem } from '../plugin-types';
-import { IContractEvent } from '../../db/db-types';
 import { ICis2Db } from './cis2-db';
 import { toContractNameFromReceiveName } from '../../utils';
 
@@ -29,27 +28,25 @@ export class ProjectNftPlugin implements IListenerPlugin {
     async insertBlockItems(blockHash: string, blockHeight: bigint, items: PluginBlockItem[]): Promise<void> {
         const events = items.flatMap((i) =>
             i.events
-                .map(
-                    (i2) =>
-                        ({
-                            block: {
-                                blockHash,
-                                blockHeight: parseInt(blockHeight.toString()),
-                            },
-                            transaction: {
-                                hash: i.hash,
-                                blockItemType: i.type,
-                                transactionType: i.transactionType,
-                                transactionIndex: i.transactionIndex.toString(),
-                            },
-                            eventType: i.transactionEventType,
-                            address: {
-                                index: i.contractAddress.index.toString(),
-                                subindex: i.contractAddress.subindex.toString(),
-                            },
-                            event: i2,
-                        } as IContractEvent)
-                )
+                .map((i2) => ({
+                    block: {
+                        blockHash,
+                        blockHeight: parseInt(blockHeight.toString()),
+                    },
+                    transaction: {
+                        hash: i.hash,
+                        blockItemType: i.type,
+                        transactionType: i.transactionType,
+                        transactionIndex: i.transactionIndex.toString(),
+                    },
+                    eventType: i.transactionEventType,
+                    address: {
+                        index: i.contractAddress.index.toString(),
+                        subindex: i.contractAddress.subindex.toString(),
+                    },
+                    sender: i.sender,
+                    event: i2,
+                }))
                 .map((e) => new this.db.contractEvents(e))
         );
 

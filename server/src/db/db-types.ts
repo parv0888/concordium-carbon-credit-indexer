@@ -15,6 +15,7 @@ export type DbEvent<T> = {
     event: T;
     eventType: TransactionEventTag;
     address: { index: string; subindex: string };
+    sender: string;
 };
 
 export type DbTransactionEvent<T> = DbEvent<T> & {
@@ -35,9 +36,15 @@ export type DbBlockEvent<T> = DbTransactionEvent<T> & {
 
 export type IContractEvent = DbBlockEvent<unknown>;
 
+export type IUser = {
+    email: string;
+    account: string;
+}
+
 export type IDb = {
     blocks: Model<IBlock>;
     contractEvents: Model<IContractEvent>;
+    users: Model<IUser>;
 };
 
 export type InitializedContract = {
