@@ -2,13 +2,13 @@ import * as dotenv from 'dotenv';
 import getDb, * as dbClient from './db/db';
 import * as concordiumClient from './concordium/client';
 import { max } from './utils';
-import { IBlock, InitializedContract } from './db/db-types';
+import { IBlock } from './db/db-types';
 import sleep from 'sleep-promise';
 import { TransactionEventTag, TransactionKindString, TransactionSummaryType } from '@concordium/node-sdk';
 import { IListenerPlugin } from './listener/listener-plugin';
 import { deserializeInitContractEvents, deserializeUpdateContractEvents } from './listener/events-deserializer';
 import { PluginBlockItem } from './listener/plugin-types';
-import { ProjectNftPlugin } from './listener/plugins/cis2-plugin';
+import { CarbonCreditModulePlugin } from './listener/plugins/carbon-credit-module-plugin';
 dotenv.config();
 
 const nodeEndpoint = process.env.NODE_ENDPOINT || '';
@@ -22,7 +22,7 @@ const plugins: IListenerPlugin[] = [];
 
 (async () => {
     const db = await getDb(mongodbConnString);
-    plugins.push(new ProjectNftPlugin(db, moduleRef, moduleSchema));
+    plugins.push(new CarbonCreditModulePlugin(db, moduleRef, moduleSchema));
 
     while (true) {
         const startingBlockHeight = !!startingBlockHash
@@ -50,8 +50,6 @@ const plugins: IListenerPlugin[] = [];
 
                 const blockItems = await client.getBlockTransactionEvents(blockHash);
 
-                const initializedContracts: InitializedContract[] = [];
-
                 const pluginBlockItems: PluginBlockItem[] = [];
 
                 for await (const blockItem of blockItems) {
@@ -60,12 +58,9 @@ const plugins: IListenerPlugin[] = [];
                             switch (blockItem.transactionType) {
                                 case TransactionKindString.InitContract:
                                     if (!plugin.shouldProcessModule(blockItem.contractInitialized.ref)) {
+                                        console.log(`Skipping Module Ref: ${blockItem.contractInitialized.ref}`);
                                         continue;
                                     }
-                                    initializedContracts.push({
-                                        moduleRef: blockItem.contractInitialized.ref,
-                                        contractAddress: blockItem.contractInitialized.address,
-                                    });
                                     const moduleSchema = plugin.getModuleSchema(blockItem.contractInitialized.ref);
                                     const initContractEvents = deserializeInitContractEvents(
                                         blockItem.contractInitialized.events,
@@ -78,7 +73,7 @@ const plugins: IListenerPlugin[] = [];
                                         methodName: blockItem.contractInitialized.initName,
                                         type: blockItem.type,
                                         transactionType: blockItem.transactionType,
-                                        events: initContractEvents,
+                                        events: initContractEvents.length ? initContractEvents : [undefined],
                                         transactionEventType: TransactionEventTag.ContractInitialized,
                                         transactionIndex: blockItem.index,
                                         sender: blockItem.sender
@@ -89,12 +84,9 @@ const plugins: IListenerPlugin[] = [];
                                         switch (e.tag) {
                                             case TransactionEventTag.Updated:
                                                 if (!plugin.shouldProcessContractAddress(e.address)) {
+                                                    console.log(`Skipping Contract Address: ${e.address}`);
                                                     continue;
                                                 }
-
-                                                // if (!plugin.shouldProcessContractMethod(e.receiveName)) {
-                                                //     continue;
-                                                // }
 
                                                 const moduleRef = await concordiumClient.getContractModule(
                                                     client,
@@ -102,6 +94,7 @@ const plugins: IListenerPlugin[] = [];
                                                     blockHash
                                                 );
                                                 if (!plugin.shouldProcessModule(moduleRef)) {
+                                                    console.log(`Skipping Module Ref: ${moduleRef}`);
                                                     continue;
                                                 }
 
@@ -125,6 +118,7 @@ const plugins: IListenerPlugin[] = [];
                                                 });
                                                 break;
                                             default:
+                                                console.log(`Skipping Event Tag: ${e.tag}`);
                                                 continue;
                                         }
                                     }

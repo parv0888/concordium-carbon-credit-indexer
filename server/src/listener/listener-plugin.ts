@@ -5,7 +5,6 @@ import { PluginBlockItem } from './plugin-types';
  * Interface for Listener Plugin
  */
 export interface IListenerPlugin {
-    shouldProcessContractMethod(receiveName: string): unknown;
     /**
      * Gets the name of the plugin
      */

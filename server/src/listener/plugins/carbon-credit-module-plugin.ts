@@ -2,9 +2,8 @@ import { ContractAddress } from '@concordium/node-sdk';
 import { IListenerPlugin } from '../listener-plugin';
 import { PluginBlockItem } from '../plugin-types';
 import { ICis2Db } from './cis2-db';
-import { toContractNameFromReceiveName } from '../../utils';
 
-export class ProjectNftPlugin implements IListenerPlugin {
+export class CarbonCreditModulePlugin implements IListenerPlugin {
     db: ICis2Db;
     moduleRef: string;
     moduleSchema: string;
@@ -13,12 +12,6 @@ export class ProjectNftPlugin implements IListenerPlugin {
         this.db = db;
         this.moduleRef = moduleRef;
         this.moduleSchema = moduleSchema;
-    }
-
-    shouldProcessContractMethod(receiveName: string): unknown {
-        const contractName = toContractNameFromReceiveName(receiveName);
-
-        return contractName === this.getName();
     }
 
     getName(): string {
@@ -45,6 +38,7 @@ export class ProjectNftPlugin implements IListenerPlugin {
                         subindex: i.contractAddress.subindex.toString(),
                     },
                     sender: i.sender,
+                    method: i.methodName.split('.'),
                     event: i2,
                 }))
                 .map((e) => new this.db.contractEvents(e))
