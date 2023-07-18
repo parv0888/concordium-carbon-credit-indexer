@@ -72,7 +72,7 @@ const baseAccountAddress = process.env.BASE_ACCOUNT_ADDRESS!;
             dbQuery[`event.${reqBody.eventType}`] = { $exists: true };
         }
 
-        const count = await db.contractEvents.estimatedDocumentCount(dbQuery);
+        const count = await db.contractEvents.count(dbQuery);
         const events = await db.contractEvents.find(dbQuery, null, {
             limit: pageSize,
             skip: skip,
