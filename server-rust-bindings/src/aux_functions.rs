@@ -41,7 +41,7 @@ mod tests {
         let res = deserialize_event_aux(
             event_bytes.to_owned(),
             schema.to_owned(),
-            "project_nft",
+            "project_token",
             None,
         );
         assert!(res.is_ok());
