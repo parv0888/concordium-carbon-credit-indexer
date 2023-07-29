@@ -15,7 +15,7 @@ export class CarbonCreditModulePlugin implements IListenerPlugin {
     }
 
     getName(): string {
-        return 'project-nft';
+        return 'carbon-credit-module-events';
     }
 
     async insertBlockItems(blockHash: string, blockHeight: bigint, items: PluginBlockItem[]): Promise<void> {
